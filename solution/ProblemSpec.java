@@ -24,7 +24,6 @@ public class ProblemSpec {
 	private boolean problemLoaded = false;
 	/** True iff a solution is currently loaded */
 	private boolean solutionLoaded = false;
-
 	/** The number of joints */
 	private int jointCount;
 	/** The initial configuration */
