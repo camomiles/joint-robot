@@ -1,6 +1,6 @@
 package solution;
 
-import sun.dc.path.PathException;
+import sun.jvm.hotspot.jdi.DoubleTypeImpl;
 
 import java.awt.geom.Line2D;
 import java.awt.geom.Point2D;
@@ -8,8 +8,8 @@ import java.awt.geom.Rectangle2D;
 import java.io.FileWriter;
 import java.io.IOException;
 import java.util.ArrayList;
-import java.util.HashMap;
 import java.util.List;
+import java.lang.Math;
 
 /**
  * Find path from initial configuration to goal configuration of the joint robot using search algorithms
@@ -20,7 +20,6 @@ public class Main {
 
     /** The default value for maximum error */
     public static final double DEFAULT_MAX_ERROR = 1e-5;
-
     /** The maximum distance the base can move in one step */
     public static final double MAX_BASE_STEP = 0.001;
     /** The maximum change in joint angle in one step (radians) */
@@ -30,11 +29,9 @@ public class Main {
 
         // Ensure that a filename (or something) was given in argv[0]
         if (argv.length < 1 || argv.length > 2) {
-            System.err.println("Usage: ai-7702 inputFileName [outputFileName]");
+            System.err.println("Usage: java ai-7702.jar inputFileName [outputFileName]");
             System.exit(1);
         }
-
-        say("Hello World!");
 
         // Create new instance of the problem specification
         ProblemSpec problemSpec = new ProblemSpec();
@@ -59,44 +56,154 @@ public class Main {
             count++;
         }
 
-        search(problemSpec);
+        // Construct graph
+        // HashMap<String, Node> graph = new HashMap<String, Node>();
+
+        Node initial = new Node (problemSpec.getInitialState());
+        Node goal = new Node (problemSpec.getGoalState());
+
+        Node path = buildRandomSearchTree(initial, goal, problemSpec);
+
+        generatePath(path, goal);
     }
 
+    // Find shortest path from root to goal node
+    private static List<ArmConfig> generatePath(Node path, Node goal) {
+
+        List<ArmConfig> verticies = new ArrayList<ArmConfig>();
+
+        return verticies;
+    }
+
+    /**
+     *
+     * Build search tree from initial configuration to goal configuration
+     * using Rapidly-exploring Random trees algorithm
+     *
+     * @param root - [Node] root node to start search from
+     * @param goal - [Node] goal node to find path to
+     *
+     * @return - [Node] root node of the tree that contains path to the goal
+     */
+    private static Node buildRandomSearchTree(Node root, Node goal, ProblemSpec ps) {
+
+        say("\nBuild tree from " + root.getConfiguration() + " to " + goal.getConfiguration());
+
+        boolean found = false;
+
+        // Check if path from initial to goal configuration is available
+        // If available, add goal as a child of initial node and return
+
+        while (!found) {
+            // If not available, sample random point in the configuration space
+            Node random = getRandomNode(ps);
+
+            say("\nPicked random node: " + random.getConfiguration());
+
+            // Traverse existing graph and find element with closest distance to the target node
+            Node closest = findClosestNode(root, random);
+
+            say("Found closest point to it: " + closest.getConfiguration());
+
+            // Check that line between closest and target points are collision free
+            if (!hasCollision(random.getConfiguration(), ps.getObstacles()) && isCollisionFreeLine(closest.getConfiguration(), random.getConfiguration(), ps.getObstacles())) {
+                say("Line to random point has no collisions");
+
+                // Add random node as a child of the closest node
+                closest.addChild(random);
+
+                // If so, check that line between random and goal configuration
+                if (isCollisionFreeLine(random.getConfiguration(), goal.getConfiguration(), ps.getObstacles())) {
+                    say("Line to the goal point has no collisions");
+                    // Found valid path to the goal
+                    found = true;
+                    // Add goal node as a child of the random node
+                    random.addChild(goal);
+                }
+
+            } else {
+                // If it is not collision free, find closest collision free point
+                say("Sample has collisions, putting closest point with no collisions on the tree");
+            }
+        }
+
+        return root;
+    }
+
+    /**
+     * Find closest node of the tree to the target
+     *
+     * @param root - [Node] - root element of the tree to traverse
+     * @param target - [Node] - target element to check if path was found
+     *
+     * @return - [Node] closest node to the target in the given tree
+     */
+    private static Node findClosestNode(Node root, Node target) {
+        return findClosestNode(root, target, root);
+    }
+
+    private static Node findClosestNode(Node root, Node target, Node closest) {
+        //say("Distance from " + root.getConfiguration() + " to " + target.getConfiguration() + " is " + root.getConfiguration().maxDistance(target.getConfiguration()));
+
+        // if root node is closer then closest distance, set is closest
+        if (root.getConfiguration().maxDistance(target.getConfiguration()) < closest.getConfiguration().maxDistance(target.getConfiguration())) {
+            closest = root;
+        }
+
+        // call function on every child
+        for (Node child : root.getChildren()) {
+            closest = findClosestNode(child, target, closest);
+        }
+
+        return closest;
+    }
+
+    private static Node getRandomNode(ProblemSpec ps) {
+        double xvalue = Math.random();
+        double yvalue = Math.random();
+
+        String confString = "" + xvalue + " " + yvalue;
+
+        ArmConfig testConfig = new ArmConfig(confString);
+
+        return new Node(testConfig);
+    }
 
     // Search for valid path between initial and goal configuration
-    private static void search(ProblemSpec problemSpec) {
-        // Graph that algorithm is building
-        HashMap<String, Node> graph = new HashMap<String, Node>();
-
-        // Create node with initial configuration
-        Node initial = new Node();
-        initial.label = "" + graph.size();
-        initial.configuration = problemSpec.getInitialState();
-        // Put in in the graph
-        graph.put(initial.label, initial);
-
-        // Check if straight pass between initial and goal configurations is available
-        if (isCollisionFreeLine(initial.configuration, problemSpec.getGoalState(), problemSpec.getObstacles())) {
-            say("Straight pass from initial to goal configuration is available");
-
-            // Build path from initial to goal path
-            try {
-                List<ArmConfig> path = createStraightPath(problemSpec.getInitialState(), problemSpec.getGoalState());
-
-                // Save this path to file
-                saveSolution("testfile.txt", path);
-
-            } catch (Exception e) {
-                say ("Failed to generate a solution path:");
-                say (e.getMessage());
-                System.exit(1);
-            }
-
-
-        } else {
-            say("There are obstacles");
-        }
-    }
+//    private static void search(ProblemSpec problemSpec) {
+//        // Graph that algorithm is building
+//        HashMap<String, Node> graph = new HashMap<String, Node>();
+//
+//        // Create node with initial configuration
+//        Node initial = new Node();
+//        initial.label = "" + graph.size();
+//        initial.configuration = problemSpec.getInitialState();
+//        // Put in in the graph
+//        graph.put(initial.label, initial);
+//
+//        // Check if straight pass between initial and goal configurations is available
+//        if (isCollisionFreeLine(initial.configuration, problemSpec.getGoalState(), problemSpec.getObstacles())) {
+//
+//            say("Straight pass from initial to goal configuration is available");
+//
+//            // Build path from initial to goal path
+//            try {
+//                List<ArmConfig> path = createStraightPath(problemSpec.getInitialState(), problemSpec.getGoalState());
+//
+//                // Save this path to file
+//                saveSolution("testfile.txt", path);
+//
+//            } catch (Exception e) {
+//                say ("Failed to generate a solution path:");
+//                say (e.getMessage());
+//                System.exit(1);
+//            }
+//
+//
+//        } else {
+//            say("There are obstacles");
+//        }
+//    }
 
 
     /**
