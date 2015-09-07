@@ -53,7 +53,7 @@ public class Tester {
         // otherwise split in distance in half and compare
         ArmConfig half = fraction(0.5, initial, goal);
 
-        return isValidStep(initial, goal) ||
+        return (isValidStep(initial, goal) && fitsBounds(half)) ||
                 isCollisionFreeLine(initial, half, obstacles)  && isCollisionFreeLine(half, goal, obstacles);
     }
 

@@ -258,7 +258,17 @@ public class Main {
             }
         }
 
-        ArmConfig randomConfig = new ArmConfig(config);
+        // Bias search towards the goal
+        double chance = Math.random();
+
+        ArmConfig randomConfig;
+
+        if (chance < 0.07) {
+            randomConfig = ps.getGoalState();
+        } else {
+            randomConfig = new ArmConfig(config);
+        }
+        // randomConfig = new ArmConfig(config);
 
         // Check new random config for errors
         if (Tester.fitsBounds(randomConfig) && !Tester.hasSelfCollision(randomConfig) && Tester.hasValidJointAngles(randomConfig)) {
