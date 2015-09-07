@@ -63,6 +63,10 @@ public class Main {
      */
     private static void search(ProblemSpec problemSpec, String filename) {
         // Check if straight pass between initial and goal configurations is available
+        say("Initial state:" + problemSpec.getInitialState());
+        say("Goal state:" + problemSpec.getGoalState());
+        say("Collision free: " + Tester.isCollisionFreeLine(problemSpec.getInitialState(), problemSpec.getGoalState(), problemSpec.getObstacles()));
+
         if (Tester.isCollisionFreeLine(problemSpec.getInitialState(), problemSpec.getGoalState(), problemSpec.getObstacles())) {
             say("Straight pass from initial to goal configuration is available.");
             // Build path from initial to goal path

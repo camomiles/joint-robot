@@ -17,7 +17,7 @@ public class Tester {
     /** The workspace bounds */
     public static final Rectangle2D BOUNDS = new Rectangle2D.Double(0, 0, 1, 1);
     /** The default value for maximum error */
-    public static final double DEFAULT_MAX_ERROR = 1e-5;
+    public static final double DEFAULT_MAX_ERROR = 0;
     /** Remembers the specifications of the problem. */
     private static ProblemSpec ps;
     /** The workspace bounds, with allowable error. */
@@ -42,6 +42,7 @@ public class Tester {
      *         obstacles.
      */
     public static boolean isCollisionFreeLine(ArmConfig initial, ArmConfig goal, List<Obstacle> obstacles) {
+
         // Check if initial configuration collides with any of the obstacles
         if (hasCollision(initial, obstacles)) { return false; }
 
