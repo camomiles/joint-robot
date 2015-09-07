@@ -37,11 +37,10 @@ public class Main {
             say("Initial configuration: " + problemSpec.getInitialState());
             say("Goal configuration: " + problemSpec.getGoalState());
 
-            say("Fraction: " + Tester.fraction(0.5, problemSpec.getInitialState(), problemSpec.getGoalState()));
 
             int count = 1;
             for (Obstacle obstacle : problemSpec.getObstacles()) {
-                say("Obstacle " + count + ":" + obstacle);
+                say("Obstacle " + count + ": " + obstacle);
                 count++;
             }
         } catch (IOException e) {
@@ -50,8 +49,16 @@ public class Main {
             System.exit(1);
         }
 
+        say("\nSearching...");
         // Run search for path solution
+        long startTime = System.currentTimeMillis();
+
         search(problemSpec, argv[1]);
+
+        long stopTime = System.currentTimeMillis();
+        long elapsedTime = stopTime - startTime;
+
+        System.out.println("Time taken: " + elapsedTime/1000 + " seconds.");
 
         // Set problem to test
         Tester.testAll(problemSpec);
@@ -65,9 +72,6 @@ public class Main {
      */
     private static void search(ProblemSpec problemSpec, String filename) {
         // Check if straight pass between initial and goal configurations is available
-        say("Initial state:" + problemSpec.getInitialState());
-        say("Goal state:" + problemSpec.getGoalState());
-        say("Collision free: " + Tester.isCollisionFreeLine(problemSpec.getInitialState(), problemSpec.getGoalState(), problemSpec.getObstacles()));
 
         if (Tester.isCollisionFreeLine(problemSpec.getInitialState(), problemSpec.getGoalState(), problemSpec.getObstacles())) {
             say("Straight pass from initial to goal configuration is available.");
@@ -143,7 +147,9 @@ public class Main {
         // Check if distance between initial and goal points is more then valid step
         if (Tester.isValidStep(initial, goal)) {
             // Path is collision free at that point
-            path.add(Tester.fraction(0.5, initial, goal));
+            ArmConfig middle = Tester.fraction(0.5, initial, goal);
+
+            path.add(middle);
 
             return path;
         } else {
@@ -170,8 +176,16 @@ public class Main {
 
         // Repeat while solution is not found
         while (!found) {
+            Node random = null;
             // If not available, sample random point in the configuration space
-            Node random = getRandomNode(ps);
+            boolean gotRandom = false;
+            while (!gotRandom) {
+                random = getRandomNode(ps);
+
+                if (random != null) {
+                    gotRandom = true;
+                }
+            }
 
             // Traverse existing graph and find element with closest distance to the target node
             Node closest = findClosestNode(root, random);
@@ -186,7 +200,7 @@ public class Main {
 
                 // If so, check that line between random and goal configuration
                 if (Tester.isCollisionFreeLine(random.getConfiguration(), goal.getConfiguration(), ps.getObstacles())) {
-                    say("Line from Random to the Goal point has no collisions. Solution found.");
+                    say("Solution found.");
                     // Found valid path to the goal
                     found = true;
                     // Add goal node as a child of the random node
@@ -229,7 +243,7 @@ public class Main {
             } else {
                 double randomSign = Math.random();
 
-                double randomAngle = Math.random() * ((5 * Math.PI) / 6);
+                double randomAngle = Math.random() * ((150 * Math.PI) / 180);
 
                 if (randomSign >= 0.5) {
                     config = config + randomAngle;
@@ -247,15 +261,11 @@ public class Main {
         ArmConfig randomConfig = new ArmConfig(config);
 
         // Check new random config for errors
-        if (Tester.hasSelfCollision(randomConfig)) {
-            return getRandomNode(ps);
-        } else if (!Tester.hasValidJointAngles(randomConfig)) {
-            return getRandomNode(ps);
-        } else if (!Tester.fitsBounds(randomConfig)) {
-            return getRandomNode(ps);
+        if (Tester.fitsBounds(randomConfig) && !Tester.hasSelfCollision(randomConfig) && Tester.hasValidJointAngles(randomConfig)) {
+            return new Node(randomConfig);
+        } else {
+            return null;
         }
-
-        return new Node(randomConfig);
     }
 
     /**

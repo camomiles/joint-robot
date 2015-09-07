@@ -21,7 +21,7 @@ public class Tester {
     /** Remembers the specifications of the problem. */
     private static ProblemSpec ps;
     /** The workspace bounds, with allowable error. */
-    private static Rectangle2D lenientBounds = grow(BOUNDS, DEFAULT_MAX_ERROR);
+    private static Rectangle2D lenientBounds = BOUNDS;
 
     /**
      * Set problem spec for testing
@@ -44,10 +44,10 @@ public class Tester {
     public static boolean isCollisionFreeLine(ArmConfig initial, ArmConfig goal, List<Obstacle> obstacles) {
 
         // Check if initial configuration collides with any of the obstacles
-        if (hasCollision(initial, obstacles)) { return false; }
+        if (hasCollision(initial, obstacles) || !fitsBounds(initial)) { return false; }
 
         // Check if goal configuration collides with any of the obstacles
-        if (hasCollision(goal, obstacles)) { return false; }
+        if (hasCollision(goal, obstacles) || !fitsBounds(goal)) { return false; }
 
         // If path between initial and goal is valid step, return true.
         // otherwise split in distance in half and compare
@@ -322,6 +322,10 @@ public class Tester {
                             + " state(s) go out of the workspace bounds.",
                     badStates.size(), ps.getPath().size()));
 
+            for (int index : badStates) {
+
+                System.out.println("Bad state: " + fitsBounds(ps.getPath().get(index)));
+            }
             return false;
         } else {
             return true;
