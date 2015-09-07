@@ -37,6 +37,8 @@ public class Main {
             say("Initial configuration: " + problemSpec.getInitialState());
             say("Goal configuration: " + problemSpec.getGoalState());
 
+            say("Fraction: " + Tester.fraction(0.5, problemSpec.getInitialState(), problemSpec.getGoalState()));
+
             int count = 1;
             for (Obstacle obstacle : problemSpec.getObstacles()) {
                 say("Obstacle " + count + ":" + obstacle);
@@ -171,18 +173,13 @@ public class Main {
             // If not available, sample random point in the configuration space
             Node random = getRandomNode(ps);
 
-            say("\nPicked random node: " + random.getConfiguration());
-
             // Traverse existing graph and find element with closest distance to the target node
             Node closest = findClosestNode(root, random);
-
-            say("Found closest point to it: " + closest.getConfiguration());
 
             // Check that line between closest and target points are collision free
             if (!Tester.hasCollision(random.getConfiguration(), ps.getObstacles()) &&
                     Tester.isCollisionFreeLine(closest.getConfiguration(), random.getConfiguration(), ps.getObstacles())) {
 
-                say("Line from Closest to Random point has no collisions. Adding it to the tree...");
 
                 // Add random node as a child of the closest node
                 closest.addChild(random);
@@ -198,8 +195,6 @@ public class Main {
 
             } else {
                 // If it is not collision free, find closest collision free point
-                say("Sample has collisions. Looking for closest collision-free node...");
-
                 // Find closest collision free node
                 Node collisionFreeNode = findClosetCollisionFreeNode(closest, random, ps.getObstacles());
 
@@ -207,12 +202,7 @@ public class Main {
 
                     // Check if closest point is the most closest collision free point
                     // in other words, it is the closest possible point to the obstacle already
-                    if (closest.getConfiguration() == collisionFreeNode.getConfiguration()) {
-                        say("Closest point is already on the path tree.");
-                    } else {
-                        say("Found closest collision-free node: " + collisionFreeNode.getConfiguration());
-                        say("Adding it to the path tree...");
-
+                    if (!(closest.getConfiguration() == collisionFreeNode.getConfiguration())) {
                         closest.addChild(collisionFreeNode);
                     }
                 }
@@ -233,16 +223,39 @@ public class Main {
 
         // Build random configuration string
         for (int i = 0; i < 2 + ps.getJointCount(); i++) {
-            config = config + Math.random();
+
+            if (i < 2) {
+                config = config + Math.random();
+            } else {
+                double randomSign = Math.random();
+
+                double randomAngle = Math.random() * ((5 * Math.PI) / 6);
+
+                if (randomSign >= 0.5) {
+                    config = config + randomAngle;
+                } else {
+                    randomAngle = -randomAngle;
+                    config = config + randomAngle;
+                }
+            }
 
             if (i < 1 + ps.getJointCount()) {
                 config += " ";
             }
         }
 
-        ArmConfig testConfig = new ArmConfig(config);
+        ArmConfig randomConfig = new ArmConfig(config);
 
-        return new Node(testConfig);
+        // Check new random config for errors
+        if (Tester.hasSelfCollision(randomConfig)) {
+            return getRandomNode(ps);
+        } else if (!Tester.hasValidJointAngles(randomConfig)) {
+            return getRandomNode(ps);
+        } else if (!Tester.fitsBounds(randomConfig)) {
+            return getRandomNode(ps);
+        }
+
+        return new Node(randomConfig);
     }
 
     /**

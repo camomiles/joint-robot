@@ -76,10 +76,19 @@ public class Tester {
         Point2D initialBase =  initial.getBase();
         Point2D goalBase = goal.getBase();
 
+        List<Double> initialAngles = initial.getJointAngles();
+        List<Double> goalAngles = goal.getJointAngles();
+
+        List<Double> fractionJointAngles = new ArrayList<Double>();
+
+        for (int i = 0; i < initial.getJointCount(); i++) {
+            fractionJointAngles.add(i, initialAngles.get(i) + fraction * (goalAngles.get(i) - initialAngles.get(i)));
+        }
+
         // Calculate point that is fraction away on the line
         Point2D newConfig = new Point2D.Double(initialBase.getX() + fraction * (goalBase.getX() - initialBase.getX()), initialBase.getY() + fraction * (goalBase.getY() - initialBase.getY()));
 
-        return new ArmConfig(newConfig, initial.getJointAngles());
+        return new ArmConfig(newConfig, fractionJointAngles);
     }
 
 
@@ -346,12 +355,14 @@ public class Tester {
         if (!lenientBounds.contains(cfg.getBase())) {
             return false;
         }
+
         List<Line2D> links = cfg.getLinks();
         for (Line2D link : links) {
             if (!lenientBounds.contains(link.getP2())) {
                 return false;
             }
         }
+
         return true;
     }
 
