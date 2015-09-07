@@ -11,6 +11,8 @@ public class Node {
     private ArmConfig configuration = null;
     // Node children
     private List<Node> children = new ArrayList<Node>();
+    // Node parent
+    private Node parent = null;
 
     public Node(ArmConfig configuration) {
         // Assign configuration from constructor
@@ -21,14 +23,16 @@ public class Node {
      * Add child to the Node
      * @param child - [Node] child to add
      */
-    public void addChild(Node child) { children.add(child); }
+    public void addChild(Node child) {
+        child.parent = this;
+        children.add(child);
+    }
 
     /**
-     * Retrieve child from the list of Node children by index
-     * @param index - [int] index of the child to retrieve
-     * @return - [Node] child with given index if exists
+     * Retrieve parent of the current node
+     * @return - [Node] parent of the node if exists or null otherwise
      */
-    public Node getChild(int index) { return children.get(index); }
+    public Node getParent() { return parent; }
 
     /**
      * Retrieve list of children

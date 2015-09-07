@@ -1,11 +1,7 @@
 package solution;
 
-import java.awt.geom.Line2D;
-import java.awt.geom.Rectangle2D;
-import java.io.IOException;
-import java.util.ArrayList;
-import java.util.Arrays;
-import java.util.List;
+import java.awt.geom.*;
+import java.util.*;
 
 public class Tester {
     /** The maximum distance the base can move in one step */
@@ -22,13 +18,69 @@ public class Tester {
     public static final Rectangle2D BOUNDS = new Rectangle2D.Double(0, 0, 1, 1);
     /** The default value for maximum error */
     public static final double DEFAULT_MAX_ERROR = 1e-5;
-
     /** Remembers the specifications of the problem. */
-    private ProblemSpec ps = new ProblemSpec();
-    /** The maximum error allowed by this Tester */
-    private double maxError;
+    private static ProblemSpec ps;
     /** The workspace bounds, with allowable error. */
-    private Rectangle2D lenientBounds;
+    private static Rectangle2D lenientBounds = grow(BOUNDS, DEFAULT_MAX_ERROR);
+
+    /**
+     * Set problem spec for testing
+     *
+     * @param problemSpec - problem spec
+     */
+    public static void setProblemSpec(ProblemSpec problemSpec) { ps = problemSpec; }
+
+
+    /**
+     * Returns whether the given configs are collision free and straight line between them is collision-free.
+     *
+     * @param initial (ArmConfig) initial configuration to test
+     * @param goal (ArmConfig) goal configuration to test
+     * @param obstacles (List<Obstacle>) obstacles to check against
+     *
+     * @return (bool) whether the line between given configurations collides with any of the given
+     *         obstacles.
+     */
+    public static boolean isCollisionFreeLine(ArmConfig initial, ArmConfig goal, List<Obstacle> obstacles) {
+        // Check if initial configuration collides with any of the obstacles
+        if (hasCollision(initial, obstacles)) { return false; }
+
+        // Check if goal configuration collides with any of the obstacles
+        if (hasCollision(goal, obstacles)) { return false; }
+
+        // If path between initial and goal is valid step, return true.
+        // otherwise split in distance in half and compare
+        ArmConfig half = fraction(0.5, initial, goal);
+
+        return isValidStep(initial, goal) ||
+                isCollisionFreeLine(initial, half, obstacles)  && isCollisionFreeLine(half, goal, obstacles);
+    }
+
+    /**
+     * Returns a configuration that is on a specified fraction away on the line
+     * between initial and goal configuration.
+     * E.g. for values 0.5;0.5 and 0.5;0.9 it would give 0.5;0.7 point if fraction is 0.5
+     *
+     * @param fraction (double) fraction of the line between initial and goal configuration to put a point on
+     *
+     * @param initial (ArmConfig) initial arm configuration
+     *
+     * @param goal (ArmConfig) goal arm configuration
+     *
+     * @return (ArmConfig)
+     *        configuration that is fraction away from initial configuration.
+     *        Returned configuration would have same joint angles as provided initial configuration
+     */
+    public static ArmConfig fraction(double fraction, ArmConfig initial, ArmConfig goal) {
+        Point2D initialBase =  initial.getBase();
+        Point2D goalBase = goal.getBase();
+
+        // Calculate point that is fraction away on the line
+        Point2D newConfig = new Point2D.Double(initialBase.getX() + fraction * (goalBase.getX() - initialBase.getX()), initialBase.getY() + fraction * (goalBase.getY() - initialBase.getY()));
+
+        return new ArmConfig(newConfig, initial.getJointAngles());
+    }
+
 
     /**
      * Creates a new Rectangle2D that is grown by delta in each direction
@@ -46,35 +98,15 @@ public class Tester {
     }
 
     /**
-     * Constructor. Creates a Tester with the default value for maximum error.
-     */
-    public Tester() {
-        this(DEFAULT_MAX_ERROR);
-    }
-
-    /**
-     * Constructor. Creates a Tester with the given maximum error.
-     *
-     * @param maxError
-     *            the maximum allowable error.
-     */
-    public Tester(double maxError) {
-        this.maxError = maxError;
-        lenientBounds = grow(BOUNDS, maxError);
-    }
-
-    /**
      * Checks that the first configuration in the solution path is the initial
      * configuration.
      */
-    public boolean testInitialFirst(int testNo, boolean verbose) {
-        System.out.println(String.format("Test #%d: Initial state", testNo));
+    public static boolean testInitialFirst() {
         if (!hasInitialFirst()) {
             System.out.println("FAILED: "
                     + "Solution path must start at initial state.");
             return false;
         } else {
-            System.out.println("Passed.");
             return true;
         }
     }
@@ -84,22 +116,20 @@ public class Tester {
      *
      * @return whether the first cfg is the initial cfg.
      */
-    public boolean hasInitialFirst() {
+    public static boolean hasInitialFirst() {
         double dist = ps.getPath().get(0).maxDistance(ps.getInitialState());
-        return dist <= maxError && dist >= 0;
+        return dist <= DEFAULT_MAX_ERROR && dist >= 0;
     }
 
     /**
      * Checks that the last configuration in the solution path is the goal
      * configuration.
      */
-    public boolean testGoalLast(int testNo, boolean verbose) {
-        System.out.println(String.format("Test #%d: Goal state", testNo));
+    public static boolean testGoalLast() {
         if (!hasGoalLast()) {
             System.out.println("FAILED: Solution path must end at goal state.");
             return false;
         } else {
-            System.out.println("Passed.");
             return true;
         }
     }
@@ -109,45 +139,24 @@ public class Tester {
      *
      * @return whether the last cfg is the goal cfg.
      */
-    public boolean hasGoalLast() {
+    public static boolean hasGoalLast() {
         List<ArmConfig> path = ps.getPath();
         double dist = path.get(path.size() - 1).maxDistance(ps.getGoalState());
-        return dist <= maxError && dist >= 0;
-    }
-
-    /**
-     * Returns a copy of list where each value is incremented by delta.
-     *
-     * @param list
-     *            the list of integers to add to.
-     * @return a copy of list where each value is incremented by delta.
-     */
-    public List<Integer> addToAll(List<Integer> list, int delta) {
-        List<Integer> result = new ArrayList<Integer>();
-        for (int i : list) {
-            result.add(i + delta);
-        }
-        return result;
+        return dist <= DEFAULT_MAX_ERROR && dist >= 0;
     }
 
     /**
      * Checks that the steps in between configurations do not exceed the maximum
      * primitive step distance.
      */
-    public boolean testValidSteps(int testNo, boolean verbose) {
-        System.out.println(String.format("Test #%d: Step sizes", testNo));
+    public static boolean testValidSteps() {
         List<Integer> badSteps = getInvalidSteps();
         if (!badSteps.isEmpty()) {
             System.out.println(String.format(
                     "FAILED: Step size limit exceeded for %d of %d step(s).",
                     badSteps.size(), ps.getPath().size() - 1));
-            if (verbose) {
-                System.out.println("Starting line for each invalid step:");
-                System.out.println(addToAll(badSteps, 2));
-            }
             return false;
         } else {
-            System.out.println("Passed.");
             return true;
         }
     }
@@ -157,7 +166,7 @@ public class Tester {
      *
      * @return the preceding path indices of any invalid steps.
      */
-    public List<Integer> getInvalidSteps() {
+    public static List<Integer> getInvalidSteps() {
         List<Integer> badSteps = new ArrayList<Integer>();
         List<ArmConfig> path = ps.getPath();
         ArmConfig state = path.get(0);
@@ -180,12 +189,12 @@ public class Tester {
      *            Another configuration.
      * @return whether the step from s0 to s1 is a valid primitive step.
      */
-    public boolean isValidStep(ArmConfig cfg0, ArmConfig cfg1) {
+    public static boolean isValidStep(ArmConfig cfg0, ArmConfig cfg1) {
         if (cfg0.getJointCount() != cfg1.getJointCount()) {
             return false;
-        } else if (cfg0.maxAngleDiff(cfg1) > MAX_JOINT_STEP + maxError) {
+        } else if (cfg0.maxAngleDiff(cfg1) > MAX_JOINT_STEP + DEFAULT_MAX_ERROR) {
             return false;
-        } else if (cfg0.getBase().distance(cfg1.getBase()) > MAX_BASE_STEP + maxError) {
+        } else if (cfg0.getBase().distance(cfg1.getBase()) > MAX_BASE_STEP + DEFAULT_MAX_ERROR) {
             return false;
         }
         return true;
@@ -194,22 +203,15 @@ public class Tester {
     /**
      * Checks that joint angles are within the allowable range
      */
-    public boolean testJointAngles(int testNo, boolean verbose) {
-        System.out.println(String.format("Test #%d: Joint angle limits", testNo));
+    public static boolean testJointAngles() {
         List<Integer> badStates = getInvalidJointAngleStates();
         if (!badStates.isEmpty()) {
             System.out.println(String.format(
                     "FAILED: Invalid joint angle for %d of %d state(s).",
                     badStates.size(), ps.getPath().size()));
-            if (verbose) {
-                if (verbose) {
-                    System.out.println("Line for each invalid cfg:");
-                    System.out.println(addToAll(badStates, 2));
-                }
-            }
+
             return false;
         } else {
-            System.out.println("Passed.");
             return true;
         }
     }
@@ -219,7 +221,7 @@ public class Tester {
      *
      * @return the path indices of any states with invalid joint angles.
      */
-    public List<Integer> getInvalidJointAngleStates() {
+    public static List<Integer> getInvalidJointAngleStates() {
         List<Integer> badStates = new ArrayList<Integer>();
         List<ArmConfig> path = ps.getPath();
         for (int i = 0; i < path.size(); i++) {
@@ -237,12 +239,12 @@ public class Tester {
      * 			The configuration to test
      * @return true if all joint angles are within the limits
      */
-    public boolean hasValidJointAngles(ArmConfig cfg) {
+    public static boolean hasValidJointAngles(ArmConfig cfg) {
         List<Double> jointAngles = cfg.getJointAngles();
         for (Double angle : jointAngles) {
-            if (angle <= MIN_JOINT_ANGLE - maxError) {
+            if (angle <= MIN_JOINT_ANGLE - DEFAULT_MAX_ERROR) {
                 return false;
-            } else if (angle >= MAX_JOINT_ANGLE + maxError) {
+            } else if (angle >= MAX_JOINT_ANGLE + DEFAULT_MAX_ERROR) {
                 return false;
             }
         }
@@ -252,22 +254,14 @@ public class Tester {
     /**
      * Checks for collision between arm links
      */
-    public boolean testSelfCollision(int testNo, boolean verbose) {
-        System.out.println(String.format("Test #%d: Self collision", testNo));
+    public static boolean testSelfCollision() {
         List<Integer> badStates = getSelfCollidingStates();
         if (!badStates.isEmpty()) {
             System.out.println(String.format(
                     "FAILED: Self collision for %d of %d state(s).",
                     badStates.size(), ps.getPath().size()));
-            if (verbose) {
-                if (verbose) {
-                    System.out.println("Line for each invalid cfg:");
-                    System.out.println(addToAll(badStates, 2));
-                }
-            }
             return false;
         } else {
-            System.out.println("Passed.");
             return true;
         }
     }
@@ -277,7 +271,7 @@ public class Tester {
      *
      * @return the path indices of any states with self collision.
      */
-    public List<Integer> getSelfCollidingStates() {
+    public static List<Integer> getSelfCollidingStates() {
         List<Integer> badStates = new ArrayList<Integer>();
         List<ArmConfig> path = ps.getPath();
         for (int i = 0; i < path.size(); i++) {
@@ -296,7 +290,7 @@ public class Tester {
      * 			The arm configuration
      * @return true if there is a collision
      */
-    public boolean hasSelfCollision(ArmConfig cfg) {
+    public static boolean hasSelfCollision(ArmConfig cfg) {
         List<Line2D> links = cfg.getLinks();
         for (int i = 0; i < links.size(); i++) {
             for (int j = 0; j < i - 1; j++) {
@@ -311,20 +305,15 @@ public class Tester {
     /**
      * Checks that each configuration fits within the workspace bounds.
      */
-    public boolean testBounds(int testNo, boolean verbose) {
-        System.out.println(String.format("Test #%d: Bounds", testNo));
+    public static boolean testBounds() {
         List<Integer> badStates = getOutOfBoundsStates();
         if (!badStates.isEmpty()) {
             System.out.println(String.format("FAILED: %d of %d"
                             + " state(s) go out of the workspace bounds.",
                     badStates.size(), ps.getPath().size()));
-            if (verbose) {
-                System.out.println("Line for each invalid cfg:");
-                System.out.println(addToAll(badStates, 2));
-            }
+
             return false;
         } else {
-            System.out.println("Passed.");
             return true;
         }
     }
@@ -334,7 +323,7 @@ public class Tester {
      *
      * @return the path indices of any states that are out of bounds.
      */
-    public List<Integer> getOutOfBoundsStates() {
+    public static List<Integer> getOutOfBoundsStates() {
         List<ArmConfig> path = ps.getPath();
         List<Integer> badStates = new ArrayList<Integer>();
         for (int i = 0; i < path.size(); i++) {
@@ -352,7 +341,7 @@ public class Tester {
      *            the configuration to test.
      * @return whether the given configuration fits wholly within the bounds.
      */
-    public boolean fitsBounds(ArmConfig cfg) {
+    public static boolean fitsBounds(ArmConfig cfg) {
         if (!lenientBounds.contains(cfg.getBase())) {
             return false;
         }
@@ -369,20 +358,15 @@ public class Tester {
      * Checks that each configuration does not collide with any of the
      * obstacles.
      */
-    public boolean testCollisions(int testNo, boolean verbose) {
-        System.out.println(String.format("Test #%d: Collisions", testNo));
+    public static boolean testCollisions() {
         List<Integer> badStates = getCollidingStates();
         if (!badStates.isEmpty()) {
             System.out.println(String.format(
                     "FAILED: %d of %d state(s) collide with obstacles.",
                     badStates.size(), ps.getPath().size()));
-            if (verbose) {
-                System.out.println("Line for each invalid cfg:");
-                System.out.println(addToAll(badStates, 2));
-            }
+
             return false;
         } else {
-            System.out.println("Passed.");
             return true;
         }
     }
@@ -392,7 +376,7 @@ public class Tester {
      *
      * @return the path indices of any states that collide with obstacles.
      */
-    public List<Integer> getCollidingStates() {
+    public static List<Integer> getCollidingStates() {
         List<ArmConfig> path = ps.getPath();
         List<Integer> badStates = new ArrayList<Integer>();
         for (int i = 0; i < path.size(); i++) {
@@ -414,12 +398,13 @@ public class Tester {
      * @return whether the given config collides with any of the given
      *         obstacles.
      */
-    public boolean hasCollision(ArmConfig cfg, List<Obstacle> obstacles) {
+    public static boolean hasCollision(ArmConfig cfg, List<Obstacle> obstacles) {
         for (Obstacle o : obstacles) {
             if (hasCollision(cfg, o)) {
                 return true;
             }
         }
+
         return false;
     }
 
@@ -432,117 +417,37 @@ public class Tester {
      *            the obstacle to test against.
      * @return whether the given config collides with the given obstacle.
      */
-    public boolean hasCollision(ArmConfig cfg, Obstacle o) {
-        Rectangle2D lenientRect = grow(o.getRect(), -maxError);
+    public static boolean hasCollision(ArmConfig cfg, Obstacle o) {
+        Rectangle2D lenientRect = grow(o.getRect(), -DEFAULT_MAX_ERROR);
         List<Line2D> links = cfg.getLinks();
+        // If any of the links intersect obstacle - return true
         for (Line2D link : links) {
             if (link.intersects(lenientRect)) {
                 return true;
             }
         }
-        return false;
+
+        // If obstacle contains configuration base inside it - return true
+        return lenientRect.contains(cfg.getBase().getX(), cfg.getBase().getY());
     }
 
     /**
      * Runs a specific test based on its name.
      */
-    public boolean testByName(String testName, int testNo, boolean verbose) {
+    public static boolean testAll(ProblemSpec ps) {
 
-        if (testName.toLowerCase().equals("initial")) {
-            return testInitialFirst(testNo, verbose);
-        } else if (testName.toLowerCase().equals("goal")) {
-            return testGoalLast(testNo, verbose);
-        } else if (testName.toLowerCase().equals("steps")) {
-            return testValidSteps(testNo, verbose);
-        } else if (testName.toLowerCase().equals("angles")) {
-            return testJointAngles(testNo, verbose);
-        } else if (testName.toLowerCase().equals("self-collision")) {
-            return testSelfCollision(testNo, verbose);
-        } else if (testName.toLowerCase().equals("bounds")) {
-            return testBounds(testNo, verbose);
-        } else if (testName.toLowerCase().equals("collisions")) {
-            return testCollisions(testNo, verbose);
-        } else {
-            return true;
-        }
-    }
+        setProblemSpec(ps);
 
-    // public static void main(String[] args) {
-    // 	System.out.print("Hello World!");
-    // }
+        System.out.println("\n");
+        System.out.println("Test that solution has initial config first: " + testInitialFirst());
+        System.out.println("Test that solution has goal config last: " + testGoalLast());
+        System.out.println("Test that solution has only valid steps: " + testValidSteps());
+        System.out.println("Test that joint angles are within range: " + testJointAngles());
+        System.out.println("Test that there is no self collisions: " + testSelfCollision());
+        System.out.println("Test that every configuration falls within bounds: " + testBounds());
+        System.out.println("Test that there is no collisions with obstacles: " + testCollisions());
 
-    /**
-     * Runs all test cases from the command line.
-     *
-     * @param args
-     *            the command line arguments.
-     */
-    public static void main(String[] args) {
-        double maxError = DEFAULT_MAX_ERROR;
-        boolean verbose = false;
-        String problemPath = null;
-        String solutionPath = null;
-        for (int i = 0; i < args.length; i++) {
-            String arg = args[i].trim();
-            if (arg.equals("-e")) {
-                i++;
-                if (i < args.length) {
-                    maxError = Double.valueOf(args[i]);
-                }
-            } else if (arg.equals("-v")) {
-                verbose = true;
-            } else {
-                if (problemPath == null) {
-                    problemPath = arg;
-                } else {
-                    solutionPath = arg;
-                }
-            }
-        }
-        if (problemPath == null) {
-            System.out.println("Usage: tester [-e maxError] [-v] "
-                    + "problem-file [solution-file]");
-            System.exit(1);
-        }
-        System.out.println("Test #0: Loading files");
-        Tester tester = new Tester(maxError);
-        try {
-            tester.ps.loadProblem(problemPath);
-        } catch (IOException e1) {
-            System.out.println("FAILED: Invalid problem file");
-            System.out.println(e1.getMessage());
-            System.exit(1);
-        }
-
-        if (solutionPath != null) {
-            try {
-                tester.ps.loadSolution(solutionPath);
-            } catch (IOException e1) {
-                System.out.println("FAILED: Invalid solution file");
-                System.out.println(e1.getMessage());
-                System.exit(1);
-            }
-
-        } else {
-            tester.ps.assumeDirectSolution();
-        }
-        System.out.println("Passed.");
-
-        List<String> testsToRun = new ArrayList<String>();
-        if (solutionPath != null) {
-            testsToRun.addAll(Arrays.asList(new String[] { "initial", "goal",
-                    "steps"}));
-        }
-        testsToRun.addAll(Arrays.asList(new String[] { "angles",
-                "self-collision", "bounds", "collisions" }));
-        int testNo = 1;
-        int numFailures = 0;
-        for (String name : testsToRun) {
-            if (!tester.testByName(name, testNo, verbose)) {
-                numFailures++;
-            }
-            testNo++;
-        }
-        System.exit(numFailures);
+        return testInitialFirst() && testGoalLast() && testValidSteps() && testJointAngles()
+                && testSelfCollision() && testBounds() && testCollisions();
     }
 }
