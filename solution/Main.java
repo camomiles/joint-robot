@@ -175,19 +175,37 @@ public class Main {
      * @return - (Node) root node of the tree that contains path to the goal
      */
     private static Node buildRandomSearchTree(Node root, Node goal) throws KeySizeException, KeyDuplicateException {
+        long timeRandomNodes = 0;
+        long timeClosestNode = 0;
+        long timeClosestCollisionFreeNode = 0;
+        long timeCheckingIfLineIsFree = 0;
         // found flag
         boolean found = false;
         // Repeat while solution is not found
         while (!found) {
             // Sample random point in the configuration space
+            long startTime = System.currentTimeMillis();
+
             Node random = getRandomNode();
 
+            long stopTime = System.currentTimeMillis();
+            long elapsedTime = stopTime - startTime;
+            timeRandomNodes += elapsedTime;
+
+            startTime = System.currentTimeMillis();
             // Traverse existing graph and find element with closest distance to the target node
             Node closest = findClosestNode(root, random);
+            stopTime = System.currentTimeMillis();
+            elapsedTime = stopTime - startTime;
+            timeClosestNode += elapsedTime;
 
             // Check that line between closest and target points are collision free
+            startTime = System.currentTimeMillis();
             if (!Tester.hasCollision(random.getConfiguration(), problemSpec.getObstacles()) &&
                     Tester.isCollisionFreeLine(closest.getConfiguration(), random.getConfiguration(), problemSpec.getObstacles())) {
+                stopTime = System.currentTimeMillis();
+                elapsedTime = stopTime - startTime;
+                timeCheckingIfLineIsFree += elapsedTime;
 
                 // Add random node as a child of the closest node
                 closest.addChild(random);
@@ -195,6 +213,10 @@ public class Main {
                 // If so, check that line between random and goal configuration
                 if (Tester.isCollisionFreeLine(random.getConfiguration(), goal.getConfiguration(), problemSpec.getObstacles())) {
                     say("Solution found.");
+                    say("Time spent taking samples: " + timeRandomNodes + " milliseconds.");
+                    say("Time spent looking for closest node: " + timeClosestNode + " milliseconds.");
+                    say("Time spent looking for collision free node: " + timeClosestCollisionFreeNode + " milliseconds.");
+                    say("Time spent checking that line is collision free: " + timeCheckingIfLineIsFree + " milliseconds.");
                     // Found valid path to the goal
                     found = true;
                     // Add goal node as a child of the random node
@@ -203,7 +225,13 @@ public class Main {
             } else {
                 // If it is not collision free, find closest collision free point
                 // Find closest collision free node
-                Node collisionFreeNode = findClosetCollisionFreeNode(closest, random, problemSpec.getObstacles());
+                startTime = System.currentTimeMillis();
+
+                Node collisionFreeNode = findClosestCollisionFreeNode(closest, random, problemSpec.getObstacles());
+
+                stopTime = System.currentTimeMillis();
+                elapsedTime = stopTime - startTime;
+                timeClosestCollisionFreeNode += elapsedTime;
 
                 if (closest.getConfiguration().maxDistance(collisionFreeNode.getConfiguration()) > 0.0) {
                     closest.addChild(collisionFreeNode);
@@ -224,7 +252,6 @@ public class Main {
 
         // Build random configuration string
         for (int i = 0; i < 2 + problemSpec.getJointCount(); i++) {
-
             if (i < 2) {
                 config = config + Math.random();
             } else {
@@ -311,29 +338,16 @@ public class Main {
      *
      * @return - closest collision free point to the goal or initial goal in case of error
      */
-    private static Node findClosetCollisionFreeNode(Node initial, Node goal, List<Obstacle> obstacles) {
-        // check initial configuration for collisions
-        if (Tester.hasCollision(initial.getConfiguration(), obstacles)) {
-            return initial;
-        }
-
-        // create basic step path between configurations
-        List<ArmConfig> path = createStraightPath(initial.getConfiguration(), goal.getConfiguration());
-
-        // Assume first configuration is collision free (we checked before)
-        ArmConfig closestFreeConf = initial.getConfiguration();
-
-        // iterate over the path until first collision node
-        for (ArmConfig conf : path) {
-            if (Tester.hasCollision(conf, obstacles) || !Tester.fitsBounds(conf) || !Tester.hasValidJointAngles(conf) || !Tester.hasSelfCollision(conf)) {
-                // return first node before collision
-                return new Node(closestFreeConf);
-            } else {
-                closestFreeConf = conf;
+    private static Node findClosestCollisionFreeNode(Node initial, Node goal, List<Obstacle> obstacles) {
+        if (Tester.isCollisionFreeLine(initial.getConfiguration(), goal.getConfiguration(), obstacles)) {
+            return goal;
+        } else {
+            if (Tester.isValidStep(initial.getConfiguration(), goal.getConfiguration())) {
+                return initial;
             }
-        }
 
-        return new Node(closestFreeConf);
+            return findClosestCollisionFreeNode(initial, new Node(Tester.fraction(0.5, initial.getConfiguration(), goal.getConfiguration())), obstacles);
+        }
     }
 
     /**
