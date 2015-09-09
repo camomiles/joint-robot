@@ -26,7 +26,7 @@
   <target name="jar" depends="compile">
     <jar destfile="ai-7702.jar" basedir="${build.dir}">
       <manifest>
-        <attribute name="Main-Class" value="solution.Main.main" />
+        <attribute name="Main-Class" value="solution.Main" />
       </manifest>
     </jar>
   </target>
