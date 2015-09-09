@@ -10,6 +10,9 @@ import java.util.*;
  * @author Roman Yakobnyuk
  */
 public class Main {
+    /** Save link to the Problem Spec **/
+    private static ProblemSpec problemSpec = new ProblemSpec();
+
     /**
      * Application starting point.
      * Takes two arguments:
@@ -26,7 +29,7 @@ public class Main {
         }
 
         // Create new instance of the problem specification
-        ProblemSpec problemSpec = new ProblemSpec();
+        problemSpec = new ProblemSpec();
 
         // Try to load problem file specified in argument 1
         try {
@@ -64,15 +67,15 @@ public class Main {
         Tester.testAll(problemSpec);
     }
 
-    /** Runs a Rapidly-exploring Random Trees algorithm on given problem specification to generate
-     *  collision-free path in configuration space from initial configuration to goal configuration.
+    /**
+     * Runs a Rapidly-exploring Random Trees algorithm on given problem specification to generate
+     * collision-free path in configuration space from initial configuration to goal configuration.
      *
      * @param problemSpec - Problem Spec to work on
      * @param filename - filename of the file to output solution to
      */
     private static void search(ProblemSpec problemSpec, String filename) {
         // Check if straight pass between initial and goal configurations is available
-
         if (Tester.isCollisionFreeLine(problemSpec.getInitialState(), problemSpec.getGoalState(), problemSpec.getObstacles())) {
             say("Straight pass from initial to goal configuration is available.");
             // Build path from initial to goal path
@@ -93,7 +96,7 @@ public class Main {
             // Create node with goal configuration
             Node goal = new Node (problemSpec.getGoalState());
             // Find path tree
-            Node path = buildRandomSearchTree(initial, goal, problemSpec);
+            Node path = buildRandomSearchTree(initial, goal);
             // Generate valid step path
             List<ArmConfig> fullPath = generatePath(path, goal);
             try {
@@ -170,36 +173,29 @@ public class Main {
      *
      * @return - (Node) root node of the tree that contains path to the goal
      */
-    private static Node buildRandomSearchTree(Node root, Node goal, ProblemSpec ps) {
+    private static Node buildRandomSearchTree(Node root, Node goal) {
         // found flag
         boolean found = false;
 
         // Repeat while solution is not found
         while (!found) {
-            Node random = null;
+            Node random = getRandomNode();
             // If not available, sample random point in the configuration space
-            boolean gotRandom = false;
-            while (!gotRandom) {
-                random = getRandomNode(ps);
 
-                if (random != null) {
-                    gotRandom = true;
-                }
-            }
 
             // Traverse existing graph and find element with closest distance to the target node
             Node closest = findClosestNode(root, random);
 
             // Check that line between closest and target points are collision free
-            if (!Tester.hasCollision(random.getConfiguration(), ps.getObstacles()) &&
-                    Tester.isCollisionFreeLine(closest.getConfiguration(), random.getConfiguration(), ps.getObstacles())) {
+            if (!Tester.hasCollision(random.getConfiguration(), problemSpec.getObstacles()) &&
+                    Tester.isCollisionFreeLine(closest.getConfiguration(), random.getConfiguration(), problemSpec.getObstacles())) {
 
 
                 // Add random node as a child of the closest node
                 closest.addChild(random);
 
                 // If so, check that line between random and goal configuration
-                if (Tester.isCollisionFreeLine(random.getConfiguration(), goal.getConfiguration(), ps.getObstacles())) {
+                if (Tester.isCollisionFreeLine(random.getConfiguration(), goal.getConfiguration(), problemSpec.getObstacles())) {
                     say("Solution found.");
                     // Found valid path to the goal
                     found = true;
@@ -210,9 +206,9 @@ public class Main {
             } else {
                 // If it is not collision free, find closest collision free point
                 // Find closest collision free node
-                Node collisionFreeNode = findClosetCollisionFreeNode(closest, random, ps.getObstacles());
+                Node collisionFreeNode = findClosetCollisionFreeNode(closest, random, problemSpec.getObstacles());
 
-                if (Tester.isCollisionFreeLine(closest.getConfiguration(), collisionFreeNode.getConfiguration(), ps.getObstacles())) {
+                if (Tester.isCollisionFreeLine(closest.getConfiguration(), collisionFreeNode.getConfiguration(), problemSpec.getObstacles())) {
 
                     // Check if closest point is the most closest collision free point
                     // in other words, it is the closest possible point to the obstacle already
@@ -228,15 +224,14 @@ public class Main {
 
     /**
      *
-     * @param ps - problem specification
      * @return random configuration node for number of joints from problem spec using
      */
-    private static Node getRandomNode(ProblemSpec ps) {
+    private static Node getRandomNode() {
         // Configuration string
         String config = "";
 
         // Build random configuration string
-        for (int i = 0; i < 2 + ps.getJointCount(); i++) {
+        for (int i = 0; i < 2 + problemSpec.getJointCount(); i++) {
 
             if (i < 2) {
                 config = config + Math.random();
@@ -253,7 +248,7 @@ public class Main {
                 }
             }
 
-            if (i < 1 + ps.getJointCount()) {
+            if (i < 1 + problemSpec.getJointCount()) {
                 config += " ";
             }
         }
@@ -263,8 +258,8 @@ public class Main {
 
         ArmConfig randomConfig;
 
-        if (chance < 0.07) {
-            randomConfig = ps.getGoalState();
+        if (chance < 0.01) {
+            randomConfig = problemSpec.getGoalState();
         } else {
             randomConfig = new ArmConfig(config);
         }
@@ -274,7 +269,7 @@ public class Main {
         if (Tester.fitsBounds(randomConfig) && !Tester.hasSelfCollision(randomConfig) && Tester.hasValidJointAngles(randomConfig)) {
             return new Node(randomConfig);
         } else {
-            return null;
+            return getRandomNode();
         }
     }
 
