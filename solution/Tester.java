@@ -30,6 +30,58 @@ public class Tester {
      */
     public static void setProblemSpec(ProblemSpec problemSpec) { ps = problemSpec; }
 
+    /**
+     * Create list of configurations that represent path from initial configuration to goal configuration.
+     * This method does not take obstacles into account, so before calling this method proper collision check for
+     * this line segment should be done already.
+     *
+     * @param initial
+     *        Initial configuration, first step of the path returned
+     * @param goal
+     *        Goal configuration, last step of the path returned
+     * @return
+     *        List of configurations between initial and goal configurations
+     */
+    public static List<ArmConfig> createStraightPath(ArmConfig initial, ArmConfig goal) {
+        // Create new path array
+        List<ArmConfig> path = new ArrayList<ArmConfig>();
+        // Add initial configuration as a start node
+        path.add(initial);
+        // Recursively create path
+        createPath(initial, goal, path);
+        // Add goal configuration as final node
+        path.add(goal);
+
+        return path;
+    }
+
+    /**
+     * Recursively split distance between initial and goal points until we get points that are valid steps.
+     * Add valid steps to the path in order.
+     *
+     * @param initial initial configuration
+     * @param goal goal configuration
+     * @param path current path
+     *
+     * @return path from initial to goal configuration
+     */
+    private static List<ArmConfig> createPath(ArmConfig initial, ArmConfig goal, List<ArmConfig> path) {
+        // Check if distance between initial and goal points is more then valid step
+        if (Tester.isValidStep(initial, goal)) {
+            // Path is collision free at that point
+            ArmConfig middle = Tester.fraction(0.5, initial, goal);
+
+            path.add(middle);
+
+            return path;
+        } else {
+            // Split into two parts
+            createPath(initial, Tester.fraction(0.5, initial, goal), path);
+            createPath(Tester.fraction(0.5, initial, goal), goal, path);
+
+            return path;
+        }
+    }
 
     /**
      * Returns whether the given configs are collision free and straight line between them is collision-free.

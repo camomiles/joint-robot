@@ -1,9 +1,5 @@
 package solution;
 
-import edu.wlu.cs.levy.CG.KDTree;
-import edu.wlu.cs.levy.CG.KeyDuplicateException;
-import edu.wlu.cs.levy.CG.KeySizeException;
-
 import java.io.IOException;
 import java.lang.Math;
 import java.util.*;
@@ -64,7 +60,7 @@ public class Main {
         long stopTime = System.currentTimeMillis();
         long elapsedTime = stopTime - startTime;
 
-        System.out.println("Time taken: " + elapsedTime/1000 + " seconds.");
+        System.out.println("Time taken: " + elapsedTime / 1000 + " seconds.");
 
         // Set problem to test
         Tester.testAll(problemSpec);
@@ -88,7 +84,7 @@ public class Main {
         if (Tester.isCollisionFreeLine(problemSpec.getInitialState(), problemSpec.getGoalState(), problemSpec.getObstacles())) {
             say("Straight pass from initial to goal configuration is available.");
             // Build path from initial to goal path
-            List<ArmConfig> path = createStraightPath(problemSpec.getInitialState(), problemSpec.getGoalState());
+            List<ArmConfig> path = Tester.createStraightPath(problemSpec.getInitialState(), problemSpec.getGoalState());
             // Save this path
             problemSpec.setPath(path);
         } else {
@@ -113,59 +109,6 @@ public class Main {
     }
 
     /**
-     * Create list of configurations that represent path from initial configuration to goal configuration.
-     * This method does not take obstacles into account, so before calling this method proper collision check for
-     * this line segment should be done already.
-     *
-     * @param initial
-     *        Initial configuration, first step of the path returned
-     * @param goal
-     *        Goal configuration, last step of the path returned
-     * @return
-     *        List of configurations between initial and goal configurations
-     */
-    private static List<ArmConfig> createStraightPath(ArmConfig initial, ArmConfig goal) {
-        // Create new path array
-        List<ArmConfig> path = new ArrayList<ArmConfig>();
-        // Add initial configuration as a start node
-        path.add(initial);
-        // Recursively create path
-        createPath(initial, goal, path);
-        // Add goal configuration as final node
-        path.add(goal);
-
-        return path;
-    }
-
-    /**
-     * Recursively split distance between initial and goal points until we get points that are valid steps.
-     * Add valid steps to the path in order.
-     *
-     * @param initial initial configuration
-     * @param goal goal configuration
-     * @param path current path
-     *
-     * @return path from initial to goal configuration
-     */
-    private static List<ArmConfig> createPath(ArmConfig initial, ArmConfig goal, List<ArmConfig> path) {
-        // Check if distance between initial and goal points is more then valid step
-        if (Tester.isValidStep(initial, goal)) {
-            // Path is collision free at that point
-            ArmConfig middle = Tester.fraction(0.5, initial, goal);
-
-            path.add(middle);
-
-            return path;
-        } else {
-            // Split into two parts
-            createPath(initial, Tester.fraction(0.5, initial, goal), path);
-            createPath(Tester.fraction(0.5, initial, goal), goal, path);
-
-            return path;
-        }
-    }
-
-    /**
      * Build search tree from initial configuration to goal configuration
      * using Rapidly-exploring Random trees algorithm
      *
@@ -174,7 +117,8 @@ public class Main {
      *
      * @return - (Node) root node of the tree that contains path to the goal
      */
-    private static Node buildRandomSearchTree(Node root, Node goal) throws KeySizeException, KeyDuplicateException {
+    private static Node buildRandomSearchTree(Node root, Node goal) {
+
         long timeRandomNodes = 0;
         long timeClosestNode = 0;
         long timeClosestCollisionFreeNode = 0;
@@ -282,7 +226,6 @@ public class Main {
         } else {
             randomConfig = new ArmConfig(config);
         }
-        // randomConfig = new ArmConfig(config);
 
         // Check new random config for errors
         if (Tester.fitsBounds(randomConfig) && !Tester.hasSelfCollision(randomConfig) && Tester.hasValidJointAngles(randomConfig)) {
@@ -386,7 +329,7 @@ public class Main {
         boolean flag = false;
         while (!flag) {
             // Create path for the line segment between two nodes
-            List<ArmConfig> segmentPath = createStraightPath(start.getConfiguration(), next.getConfiguration());
+            List<ArmConfig> segmentPath = Tester.createStraightPath(start.getConfiguration(), next.getConfiguration());
             // Add segment path to the full path
             fullPath.addAll(segmentPath);
             // if array is empty, finish
