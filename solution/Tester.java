@@ -322,10 +322,6 @@ public class Tester {
                             + " state(s) go out of the workspace bounds.",
                     badStates.size(), ps.getPath().size()));
 
-            for (int index : badStates) {
-
-                System.out.println("Bad state: " + fitsBounds(ps.getPath().get(index)));
-            }
             return false;
         } else {
             return true;

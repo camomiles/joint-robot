@@ -1,5 +1,9 @@
 package solution;
 
+import edu.wlu.cs.levy.CG.KDTree;
+import edu.wlu.cs.levy.CG.KeyDuplicateException;
+import edu.wlu.cs.levy.CG.KeySizeException;
+
 import java.io.IOException;
 import java.lang.Math;
 import java.util.*;
@@ -40,7 +44,6 @@ public class Main {
             say("Initial configuration: " + problemSpec.getInitialState());
             say("Goal configuration: " + problemSpec.getGoalState());
 
-
             int count = 1;
             for (Obstacle obstacle : problemSpec.getObstacles()) {
                 say("Obstacle " + count + ": " + obstacle);
@@ -56,7 +59,7 @@ public class Main {
         // Run search for path solution
         long startTime = System.currentTimeMillis();
 
-        search(problemSpec, argv[1]);
+        search();
 
         long stopTime = System.currentTimeMillis();
         long elapsedTime = stopTime - startTime;
@@ -65,16 +68,22 @@ public class Main {
 
         // Set problem to test
         Tester.testAll(problemSpec);
+
+        try {
+            // Save solution to file
+            problemSpec.saveSolution(argv[1]);
+        } catch (IOException e) {
+            say("Failed to write solution to file. Error: ");
+            say(e.getMessage());
+            System.exit(1);
+        }
     }
 
     /**
      * Runs a Rapidly-exploring Random Trees algorithm on given problem specification to generate
      * collision-free path in configuration space from initial configuration to goal configuration.
-     *
-     * @param problemSpec - Problem Spec to work on
-     * @param filename - filename of the file to output solution to
      */
-    private static void search(ProblemSpec problemSpec, String filename) {
+    private static void search() {
         // Check if straight pass between initial and goal configurations is available
         if (Tester.isCollisionFreeLine(problemSpec.getInitialState(), problemSpec.getGoalState(), problemSpec.getObstacles())) {
             say("Straight pass from initial to goal configuration is available.");
@@ -82,32 +91,24 @@ public class Main {
             List<ArmConfig> path = createStraightPath(problemSpec.getInitialState(), problemSpec.getGoalState());
             // Save this path
             problemSpec.setPath(path);
-            try {
-                // Save solution to file
-                problemSpec.saveSolution(filename);
-            } catch (IOException e) {
-                say("Failed to write solution to file. Error: ");
-                say(e.getMessage());
-                System.exit(1);
-            }
         } else {
             // Create node with initial configuration
             Node initial = new Node(problemSpec.getInitialState());
             // Create node with goal configuration
             Node goal = new Node (problemSpec.getGoalState());
             // Find path tree
-            Node path = buildRandomSearchTree(initial, goal);
-            // Generate valid step path
-            List<ArmConfig> fullPath = generatePath(path, goal);
             try {
-                // Save solution
+                Node path = buildRandomSearchTree(initial, goal);
+                // Generate valid step path
+                List<ArmConfig> fullPath = generatePath(path, goal);
+                // Set solution path in the problem spec
                 problemSpec.setPath(fullPath);
-                problemSpec.saveSolution(filename);
-            } catch (IOException e) {
-                say("Failed to write solution to file. Error:");
-                say(e.getMessage());
+            } catch (Exception e) {
+                say("Failed to solve a problem. Error: ");
+                e.printStackTrace();
                 System.exit(1);
             }
+
         }
     }
 
@@ -173,15 +174,13 @@ public class Main {
      *
      * @return - (Node) root node of the tree that contains path to the goal
      */
-    private static Node buildRandomSearchTree(Node root, Node goal) {
+    private static Node buildRandomSearchTree(Node root, Node goal) throws KeySizeException, KeyDuplicateException {
         // found flag
         boolean found = false;
-
         // Repeat while solution is not found
         while (!found) {
+            // Sample random point in the configuration space
             Node random = getRandomNode();
-            // If not available, sample random point in the configuration space
-
 
             // Traverse existing graph and find element with closest distance to the target node
             Node closest = findClosestNode(root, random);
@@ -189,7 +188,6 @@ public class Main {
             // Check that line between closest and target points are collision free
             if (!Tester.hasCollision(random.getConfiguration(), problemSpec.getObstacles()) &&
                     Tester.isCollisionFreeLine(closest.getConfiguration(), random.getConfiguration(), problemSpec.getObstacles())) {
-
 
                 // Add random node as a child of the closest node
                 closest.addChild(random);
@@ -202,19 +200,13 @@ public class Main {
                     // Add goal node as a child of the random node
                     random.addChild(goal);
                 }
-
             } else {
                 // If it is not collision free, find closest collision free point
                 // Find closest collision free node
                 Node collisionFreeNode = findClosetCollisionFreeNode(closest, random, problemSpec.getObstacles());
 
-                if (Tester.isCollisionFreeLine(closest.getConfiguration(), collisionFreeNode.getConfiguration(), problemSpec.getObstacles())) {
-
-                    // Check if closest point is the most closest collision free point
-                    // in other words, it is the closest possible point to the obstacle already
-                    if (!(closest.getConfiguration() == collisionFreeNode.getConfiguration())) {
-                        closest.addChild(collisionFreeNode);
-                    }
+                if (closest.getConfiguration().maxDistance(collisionFreeNode.getConfiguration()) > 0.0) {
+                    closest.addChild(collisionFreeNode);
                 }
             }
         }
@@ -333,7 +325,7 @@ public class Main {
 
         // iterate over the path until first collision node
         for (ArmConfig conf : path) {
-            if (Tester.hasCollision(conf, obstacles)) {
+            if (Tester.hasCollision(conf, obstacles) || !Tester.fitsBounds(conf) || !Tester.hasValidJointAngles(conf) || !Tester.hasSelfCollision(conf)) {
                 // return first node before collision
                 return new Node(closestFreeConf);
             } else {
