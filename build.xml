@@ -1,0 +1,38 @@
+<?xml version="1.0"?>
+<project name="Ant-Test" default="main" basedir=".">
+  <!-- Sets variables which can later be used. -->
+  <!-- The value of a property is accessed via ${} -->
+  <property name="src.dir" location="solution" />
+  <property name="build.dir" location="bin" />
+
+  <!-- Deletes the existing build, docs and dist directory-->
+  <target name="clean">
+    <delete dir="${build.dir}" />
+  </target>
+
+  <!-- Creates the  build, docs and dist directory-->
+  <target name="makedir">
+    <mkdir dir="${build.dir}" />
+  </target>
+
+  <!-- Compiles the java code (including the usage of library for JUnit -->
+  <target name="compile" depends="clean, makedir">
+    <javac srcdir="${src.dir}" destdir="${build.dir}">
+    </javac>
+  </target>
+
+
+  <!--Creates the deployable jar file  -->
+  <target name="jar" depends="compile">
+    <jar destfile="ai-7702.jar" basedir="${build.dir}">
+      <manifest>
+        <attribute name="Main-Class" value="solution.Main.main" />
+      </manifest>
+    </jar>
+  </target>
+
+  <target name="main" depends="compile, jar">
+    <description>Main target</description>
+  </target>
+
+</project> 

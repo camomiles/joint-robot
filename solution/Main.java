@@ -10,7 +10,9 @@ import java.util.*;
  * @author Roman Yakobnyuk
  */
 public class Main {
-    /** Save link to the Problem Spec **/
+    /**
+     * Save link to the Problem Spec
+     **/
     private static ProblemSpec problemSpec = new ProblemSpec();
 
     /**
@@ -24,7 +26,7 @@ public class Main {
     public static void main(String[] argv) {
         // Ensure that a filename (or something) was given in argv[0] and argv[1]
         if (argv.length != 2) {
-            System.err.println("Usage: java ai-7702.jar inputFileName outputFileName");
+            System.err.println("Usage: java -jar ai-7702.jar inputFileName outputFileName");
             System.exit(1);
         }
 
@@ -63,7 +65,7 @@ public class Main {
         System.out.println("Time taken: " + elapsedTime / 1000 + " seconds.");
 
         // Set problem to test
-        Tester.testAll(problemSpec);
+        // Tester.testAll(problemSpec);
 
         try {
             // Save solution to file
@@ -91,7 +93,7 @@ public class Main {
             // Create node with initial configuration
             Node initial = new Node(problemSpec.getInitialState());
             // Create node with goal configuration
-            Node goal = new Node (problemSpec.getGoalState());
+            Node goal = new Node(problemSpec.getGoalState());
             // Find path tree
             try {
                 Node path = buildRandomSearchTree(initial, goal);
@@ -114,7 +116,6 @@ public class Main {
      *
      * @param root - (Node) root node to start search from
      * @param goal - (Node) goal node to find path to
-     *
      * @return - (Node) root node of the tree that contains path to the goal
      */
     private static Node buildRandomSearchTree(Node root, Node goal) {
@@ -187,7 +188,6 @@ public class Main {
     }
 
     /**
-     *
      * @return random configuration node for number of joints from problem spec using
      */
     private static Node getRandomNode() {
@@ -238,9 +238,8 @@ public class Main {
     /**
      * Find closest node of the tree to the target
      *
-     * @param root - [Node] - root element of the tree to traverse
+     * @param root   - [Node] - root element of the tree to traverse
      * @param target - [Node] - target element to check if path was found
-     *
      * @return - [Node] closest node to the target in the given tree
      */
     private static Node findClosestNode(Node root, Node target) {
@@ -250,8 +249,8 @@ public class Main {
     /**
      * Recursively finds closest node to the target node
      *
-     * @param root - current working element
-     * @param target - target element to check against
+     * @param root    - current working element
+     * @param target  - target element to check against
      * @param closest - current closest element
      * @return - closest element
      */
@@ -275,10 +274,9 @@ public class Main {
      * a path of basic steps from initial to goal configuration
      * until it finds configuration that collides with obstacles
      *
-     * @param initial - initial node
-     * @param goal - goal node
+     * @param initial   - initial node
+     * @param goal      - goal node
      * @param obstacles - list of obstacles to check against
-     *
      * @return - closest collision free point to the goal or initial goal in case of error
      */
     private static Node findClosestCollisionFreeNode(Node initial, Node goal, List<Obstacle> obstacles) {
@@ -300,9 +298,8 @@ public class Main {
      *
      * @param path - root node of the path
      * @param goal - goal node of the path
-     * @return
-     *         List of configurations that represent basic steps from initial to goal configuration through intermediate
-     *         points in the tree.
+     * @return List of configurations that represent basic steps from initial to goal configuration through intermediate
+     * points in the tree.
      */
     // Find shortest path from root to goal node
     private static List<ArmConfig> generatePath(Node path, Node goal) {

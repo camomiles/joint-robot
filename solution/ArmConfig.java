@@ -68,25 +68,6 @@ public class ArmConfig {
 		jointAngles = cfg.getJointAngles();
 		links = cfg.getLinks();
 	}
-
-	public double[] getConfigurationKey() {
-		List<Double> listKey = new ArrayList<Double>();
-
-		Scanner s = new Scanner(this.toString());
-
-		while (s.hasNextDouble()) {
-			listKey.add(s.nextDouble());
-		}
-
-		double[] key = new double[listKey.size()];
-
-		int pivot = 0;
-		for (double d : listKey) {
-			key[pivot] = listKey.get(pivot);
-		}
-
-		return key;
-	}
 	
 	/**
 	 * Returns a space-separated string representation of this configuration.
